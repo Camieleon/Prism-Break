@@ -804,7 +804,7 @@ ApplicationMain.main = function() {
 ApplicationMain.create = function(config) {
 	var app = new openfl_display_Application();
 	ManifestResources.init(config);
-	app.meta.h["build"] = "897";
+	app.meta.h["build"] = "1269";
 	app.meta.h["company"] = "Camieleon";
 	app.meta.h["file"] = "Prism Break";
 	app.meta.h["name"] = "Prism Break";
@@ -2770,7 +2770,7 @@ function Door_key_system(game) {
 					};
 				})(door_component);
 				if(door_component[0].keys.length > 0 && Lambda.exists(door_component[0].keys,is_idle) == false) {
-					openfl_utils_Assets.getSound("Assets/Sounds/Door.mp3").play(0,0,new openfl_media_SoundTransform(4));
+					openfl_utils_Assets.getSound("Assets/Sounds/Door.mp3").play(0,0,new openfl_media_SoundTransform(8));
 					door.parent.removeChild(door);
 					game.clear_entity(entity);
 				}
@@ -3060,6 +3060,18 @@ Game.prototype = $extend(core_Universe.prototype,{
 		core_Universe.prototype.update.call(this,time);
 		if(core_Core.MOUSE.any_button.is_released) {
 			this.stage.set_displayState(1);
+		}
+		var _g = this.player_link.get_component_PlayerInput(this,this.player_input_components);
+		if(_g._hx_index == 0) {
+			var player_input = _g.v;
+			var controllers = core_Core.CONTROLLERS.iterator();
+			if(player_input.movement_sticks.length == 0 && player_input.target_sticks.length == 0 && controllers.hasNext()) {
+				var controller = controllers.next();
+				controller.left_stick.threshold = 0.5;
+				controller.right_stick.threshold = 0.5;
+				player_input.movement_sticks.push(controller.left_stick);
+				player_input.target_sticks.push(controller.right_stick);
+			}
 		}
 		core_physics_Physics.integration_system(this,time);
 		PlayerInput_speed_system(this);
@@ -3389,7 +3401,7 @@ Player.__name__ = true;
 Player.prototype = {
 	__class__: Player
 };
-function Player_create(game,position,mass,speed,color_code) {
+function Player_create(game,position,kilograms,speed,color_code) {
 	var color_component = new Color(color_code);
 	var image = new openfl_display_Bitmap(openfl_utils_Assets.getBitmapData("Assets/Images/Player.png").clone());
 	image.get_bitmapData().floodFill(16,14,color_component.code);
@@ -3410,7 +3422,7 @@ function Player_create(game,position,mass,speed,color_code) {
 	case 1:
 		break;
 	}
-	return game.create_entity([player,new core_physics_Velocity(new openfl_geom_Point()),new core_physics_Force(new openfl_geom_Point()),new core_physics_Mass(mass),new Player(speed,new openfl_geom_Point(),new Laser(game,64)),new PlayerInput([core_Core.KEYBOARD.keys[37],core_Core.KEYBOARD.keys[65]],[core_Core.KEYBOARD.keys[39],core_Core.KEYBOARD.keys[68]],[core_Core.KEYBOARD.keys[40],core_Core.KEYBOARD.keys[83]],[core_Core.KEYBOARD.keys[38],core_Core.KEYBOARD.keys[87]],core_Core.MOUSE.left_button),color_component,image]);
+	return game.create_entity([player,new core_physics_Velocity(new openfl_geom_Point()),new core_physics_Force(new openfl_geom_Point()),new core_physics_Mass(kilograms),new Player(speed,new openfl_geom_Point(),new Laser(game,64)),new PlayerInput([core_Core.KEYBOARD.keys[37],core_Core.KEYBOARD.keys[65]],[core_Core.KEYBOARD.keys[39],core_Core.KEYBOARD.keys[68]],[core_Core.KEYBOARD.keys[40],core_Core.KEYBOARD.keys[83]],[core_Core.KEYBOARD.keys[38],core_Core.KEYBOARD.keys[87]],core_Core.MOUSE.left_button),color_component,image]);
 }
 function Player_movement_system(game) {
 	var _g = 0;
@@ -3421,25 +3433,21 @@ function Player_movement_system(game) {
 		if(entity.is_active == false) {
 			continue;
 		}
-		var _g2 = entity.get_component_core_Parent(game.parent_components);
-		var _g3 = entity.get_component_core_physics_Velocity(game.velocity_components);
-		var _g4 = entity.get_component_core_physics_Force(game.force_components);
-		var _g5 = entity.get_component_Player(game.player_components);
+		var _g2 = entity.get_component_core_physics_Velocity(game.velocity_components);
+		var _g3 = entity.get_component_core_physics_Force(game.force_components);
+		var _g4 = entity.get_component_Player(game.player_components);
 		if(_g2._hx_index == 0) {
 			if(_g3._hx_index == 0) {
 				if(_g4._hx_index == 0) {
-					if(_g5._hx_index == 0) {
-						var player_component = _g5.v;
-						var velocity = _g3.v;
-						var player = _g2.v;
-						var force = _g4.v;
-						player_component.movement.normalize(Math.min(player_component.movement.get_length(),player_component.speed));
-						force.vector.setTo(0,0);
-						force.vector.x += player_component.movement.x;
-						force.vector.y += player_component.movement.y;
-						force.vector.offset(-250 * velocity.vector.x,-250 * velocity.vector.y);
-						player_component.movement.setTo(0,0);
-					}
+					var player_component = _g4.v;
+					var velocity = _g2.v;
+					var force = _g3.v;
+					player_component.movement.normalize(Math.min(player_component.movement.get_length(),player_component.speed));
+					force.vector.setTo(0,0);
+					force.vector.x += player_component.movement.x;
+					force.vector.y += player_component.movement.y;
+					force.vector.offset(-250 * velocity.vector.x,-250 * velocity.vector.y);
+					player_component.movement.setTo(0,0);
 				}
 			}
 		}
@@ -3547,6 +3555,8 @@ function Player_laser_system(game,thickness) {
 	}
 }
 var PlayerInput = function(move_left,move_right,move_down,move_up,shoot) {
+	this.target_sticks = [];
+	this.movement_sticks = [];
 	this.move_left = move_left;
 	this.move_right = move_right;
 	this.move_down = move_down;
@@ -3609,6 +3619,15 @@ function PlayerInput_speed_system(game) {
 						player_component.movement.y -= player_component.speed;
 					}
 				}
+				var _g12 = 0;
+				var _g13 = player_input.movement_sticks;
+				while(_g12 < _g13.length) {
+					var movement_stick = _g13[_g12];
+					++_g12;
+					if(movement_stick.input_state.is_retained) {
+						player_component.movement.offset(player_component.speed * movement_stick.movement.x,player_component.speed * movement_stick.movement.y);
+					}
+				}
 			}
 		}
 	}
@@ -3636,6 +3655,20 @@ function PlayerInput_shoot_system(game) {
 					}
 					if(player_input.shoot.is_released) {
 						player_component.target = haxe_ds_Option.None;
+					}
+					var _g5 = 0;
+					var _g6 = player_input.target_sticks;
+					while(_g5 < _g6.length) {
+						var target_stick = _g6[_g5];
+						++_g5;
+						if(target_stick.input_state.is_retained) {
+							player_component.target = haxe_ds_Option.Some(new openfl_geom_Vector3D(target_stick.movement.x,target_stick.movement.y));
+							break;
+						}
+						if(target_stick.input_state.is_released) {
+							player_component.target = haxe_ds_Option.None;
+							break;
+						}
 					}
 				}
 			}
@@ -3988,20 +4021,18 @@ function Wall_vertical(player,player_velocity,player_force,wall,rectangle) {
 	player_force.vector.y = 0;
 }
 function Wall_solve_collision(game,player,player_velocity,player_force) {
+	var pivot = new lime_math_Vector2(0.5 * player.get_x() / game.map.tile_size.x + 0.5,0.5 * player.get_y() / game.map.tile_size.y + 0.5);
+	var links = [game.map.tiles[pivot.x | 0][pivot.y | 0],game.map.tiles[pivot.x + 1 | 0][pivot.y | 0],game.map.tiles[pivot.x | 0][pivot.y + 1 | 0],game.map.tiles[pivot.x - 1 | 0][pivot.y | 0],game.map.tiles[pivot.x | 0][pivot.y - 1 | 0],game.map.tiles[pivot.x + 1 | 0][pivot.y + 1 | 0],game.map.tiles[pivot.x - 1 | 0][pivot.y + 1 | 0],game.map.tiles[pivot.x - 1 | 0][pivot.y - 1 | 0],game.map.tiles[pivot.x + 1 | 0][pivot.y - 1 | 0]];
 	var _g = 0;
-	var _g1 = game.entities;
-	while(_g < _g1.length) {
-		var entity = _g1[_g];
+	while(_g < links.length) {
+		var link = links[_g];
 		++_g;
-		if(entity.is_active == false) {
-			continue;
-		}
-		var _g2 = entity.get_component_core_Parent(game.parent_components);
-		var _g3 = entity.get_component_Wall(game.wall_components);
-		if(_g2._hx_index == 0) {
-			if(_g3._hx_index == 0) {
-				var _g4 = _g3.v;
-				var wall = _g2.v;
+		var _g1 = link.get_component_core_Parent(game,game.parent_components);
+		var _g2 = link.get_component_Wall(game,game.wall_components);
+		if(_g1._hx_index == 0) {
+			if(_g2._hx_index == 0) {
+				var _g3 = _g2.v;
+				var wall = _g1.v;
 				if(player.hitTestObject(wall)) {
 					var rectangle = wall.getRect(game);
 					if(player_velocity.vector.x * player_velocity.vector.x > player_velocity.vector.y * player_velocity.vector.y) {
@@ -4299,6 +4330,12 @@ var core_Core = function(parent) {
 		_gthis.stage.addEventListener("middleMouseUp",($_=core_Core.MOUSE,$bind($_,$_.middle_mouse_up)));
 		_gthis.stage.addEventListener("middleClick",($_=core_Core.MOUSE,$bind($_,$_.middle_click)));
 		_gthis.stage.addEventListener("mouseWheel",($_=core_Core.MOUSE,$bind($_,$_.mouse_wheel)));
+		var gamepad = lime_ui_Gamepad.devices.iterator();
+		while(gamepad.hasNext()) {
+			var gamepad1 = gamepad.next();
+			core_input_Controller_connect(gamepad1);
+		}
+		lime_ui_Gamepad.onConnect.add(core_input_Controller_connect);
 		_gthis.time = openfl_Lib.getTimer();
 		_gthis.stage.addEventListener("frameConstructed",function(event) {
 			var _g = 0;
@@ -4311,6 +4348,11 @@ var core_Core = function(parent) {
 			}
 			core_Core.KEYBOARD.reset();
 			core_Core.MOUSE.reset();
+			var controller = core_Core.CONTROLLERS.iterator();
+			while(controller.hasNext()) {
+				var controller1 = controller.next();
+				controller1.reset();
+			}
 			var added_to_stage = UInt.toFloat(openfl_Lib.getTimer() - _gthis.time) / 1000.0;
 			_gthis.frame_time = added_to_stage;
 			_gthis.time = openfl_Lib.getTimer();
@@ -4377,12 +4419,6 @@ core_Entity.prototype = {
 		}
 		return haxe_ds_Option.None;
 	}
-	,get_component_Wall: function(component_group) {
-		if(this.is_active) {
-			return component_group[this.index];
-		}
-		return haxe_ds_Option.None;
-	}
 	,get_component_core_physics_Mass: function(component_group) {
 		if(this.is_active) {
 			return component_group[this.index];
@@ -4437,7 +4473,17 @@ var core_Link = function(entity) {
 $hxClasses["core.Link"] = core_Link;
 core_Link.__name__ = true;
 core_Link.prototype = {
-	get_component_Color: function(universe,component_group) {
+	get_component_PlayerInput: function(universe,component_group) {
+		var _g = this.verify(universe);
+		switch(_g._hx_index) {
+		case 0:
+			var entity = _g.v;
+			return entity.get_component_get_component_Component(component_group);
+		case 1:
+			return haxe_ds_Option.None;
+		}
+	}
+	,get_component_Color: function(universe,component_group) {
 		var _g = this.verify(universe);
 		switch(_g._hx_index) {
 		case 0:
@@ -4468,6 +4514,16 @@ core_Link.prototype = {
 		}
 	}
 	,get_component_Key: function(universe,component_group) {
+		var _g = this.verify(universe);
+		switch(_g._hx_index) {
+		case 0:
+			var entity = _g.v;
+			return entity.get_component_get_component_Component(component_group);
+		case 1:
+			return haxe_ds_Option.None;
+		}
+	}
+	,get_component_Wall: function(universe,component_group) {
 		var _g = this.verify(universe);
 		switch(_g._hx_index) {
 		case 0:
@@ -4577,6 +4633,200 @@ core_graphics_Camera.render_system = function(universe) {
 };
 core_graphics_Camera.prototype = {
 	__class__: core_graphics_Camera
+};
+var core_input_Controller = function(button_amount) {
+	if(button_amount == null) {
+		button_amount = 15;
+	}
+	this.right_trigger = new core_input_Trigger();
+	this.left_trigger = new core_input_Trigger();
+	this.right_stick = new core_input_Stick();
+	this.left_stick = new core_input_Stick();
+	this.any_button = new core_input_InputState();
+	var this1 = new Array(button_amount);
+	this.buttons = this1;
+	var _g = 0;
+	var _g1 = this.buttons.length;
+	while(_g < _g1) {
+		var button_index = _g++;
+		this.buttons[button_index] = new core_input_InputState();
+	}
+};
+$hxClasses["core.input.Controller"] = core_input_Controller;
+core_input_Controller.__name__ = true;
+core_input_Controller.prototype = {
+	button_down: function(button) {
+		if(this.buttons[button].is_retained == false) {
+			this.any_button.is_pressed = true;
+			this.buttons[button].is_pressed = true;
+		}
+		this.any_button.is_retained = true;
+		this.buttons[button].is_retained = true;
+	}
+	,button_up: function(button) {
+		this.any_button.is_retained = false;
+		this.buttons[button].is_retained = false;
+		this.any_button.is_released = true;
+		this.buttons[button].is_released = true;
+	}
+	,move_axis: function(axis,value) {
+		switch(axis) {
+		case 0:
+			this.left_stick.movement.x = value;
+			if(this.left_stick.movement.get_lengthSquared() > this.left_stick.threshold * this.left_stick.threshold) {
+				if(this.left_stick.input_state.is_retained == false) {
+					this.any_button.is_pressed = true;
+					this.left_stick.input_state.is_pressed = true;
+				}
+				this.any_button.is_retained = true;
+				this.left_stick.input_state.is_retained = true;
+			} else if(this.left_stick.input_state.is_retained) {
+				this.any_button.is_retained = false;
+				this.left_stick.input_state.is_retained = false;
+				this.any_button.is_released = true;
+				this.left_stick.input_state.is_released = true;
+			}
+			break;
+		case 1:
+			this.left_stick.movement.y = value;
+			if(this.left_stick.movement.get_lengthSquared() > this.left_stick.threshold * this.left_stick.threshold) {
+				if(this.left_stick.input_state.is_retained == false) {
+					this.any_button.is_pressed = true;
+					this.left_stick.input_state.is_pressed = true;
+				}
+				this.any_button.is_retained = true;
+				this.left_stick.input_state.is_retained = true;
+			} else if(this.left_stick.input_state.is_retained) {
+				this.any_button.is_retained = false;
+				this.left_stick.input_state.is_retained = false;
+				this.any_button.is_released = true;
+				this.left_stick.input_state.is_released = true;
+			}
+			break;
+		case 2:
+			this.right_stick.movement.x = value;
+			if(this.right_stick.movement.get_lengthSquared() > this.right_stick.threshold * this.right_stick.threshold) {
+				if(this.right_stick.input_state.is_retained == false) {
+					this.any_button.is_pressed = true;
+					this.right_stick.input_state.is_pressed = true;
+				}
+				this.any_button.is_retained = true;
+				this.right_stick.input_state.is_retained = true;
+			} else if(this.right_stick.input_state.is_retained) {
+				this.any_button.is_retained = false;
+				this.right_stick.input_state.is_retained = false;
+				this.any_button.is_released = true;
+				this.right_stick.input_state.is_released = true;
+			}
+			break;
+		case 3:
+			this.right_stick.movement.y = value;
+			if(this.right_stick.movement.get_lengthSquared() > this.right_stick.threshold * this.right_stick.threshold) {
+				if(this.right_stick.input_state.is_retained == false) {
+					this.any_button.is_pressed = true;
+					this.right_stick.input_state.is_pressed = true;
+				}
+				this.any_button.is_retained = true;
+				this.right_stick.input_state.is_retained = true;
+			} else if(this.right_stick.input_state.is_retained) {
+				this.any_button.is_retained = false;
+				this.right_stick.input_state.is_retained = false;
+				this.any_button.is_released = true;
+				this.right_stick.input_state.is_released = true;
+			}
+			break;
+		case 4:
+			this.left_trigger.value = value;
+			if(this.left_trigger.value > this.left_trigger.threshold) {
+				if(this.left_trigger.input_state.is_retained == false) {
+					this.any_button.is_pressed = true;
+					this.left_trigger.input_state.is_pressed = true;
+				}
+				this.any_button.is_retained = true;
+				this.left_trigger.input_state.is_retained = true;
+			} else if(this.left_trigger.input_state.is_retained) {
+				this.any_button.is_retained = false;
+				this.left_trigger.input_state.is_retained = false;
+				this.any_button.is_released = true;
+				this.left_trigger.input_state.is_released = true;
+			}
+			break;
+		case 5:
+			this.right_trigger.value = value;
+			if(this.right_trigger.value > this.right_trigger.threshold) {
+				if(this.right_trigger.input_state.is_retained == false) {
+					this.any_button.is_pressed = true;
+					this.right_trigger.input_state.is_pressed = true;
+				}
+				this.any_button.is_retained = true;
+				this.right_trigger.input_state.is_retained = true;
+			} else if(this.right_trigger.input_state.is_retained) {
+				this.any_button.is_retained = false;
+				this.right_trigger.input_state.is_retained = false;
+				this.any_button.is_released = true;
+				this.right_trigger.input_state.is_released = true;
+			}
+			break;
+		}
+	}
+	,reset: function() {
+		this.any_button.is_pressed = false;
+		this.any_button.is_released = false;
+		var _g = 0;
+		var _g1 = this.buttons;
+		while(_g < _g1.length) {
+			var button = _g1[_g];
+			++_g;
+			button.is_pressed = false;
+			button.is_released = false;
+		}
+		this.left_stick.input_state.is_pressed = false;
+		this.left_stick.input_state.is_released = false;
+		this.right_stick.input_state.is_pressed = false;
+		this.right_stick.input_state.is_released = false;
+		this.left_trigger.input_state.is_pressed = false;
+		this.left_trigger.input_state.is_released = false;
+		this.right_trigger.input_state.is_pressed = false;
+		this.right_trigger.input_state.is_released = false;
+	}
+	,__class__: core_input_Controller
+};
+function core_input_Controller_connect(gamepad) {
+	var key = gamepad.id;
+	var value = new core_input_Controller();
+	core_Core.CONTROLLERS.h[key] = value;
+	gamepad.onAxisMove.add(($_=core_Core.CONTROLLERS.h[gamepad.id],$bind($_,$_.move_axis)));
+	gamepad.onButtonDown.add(($_=core_Core.CONTROLLERS.h[gamepad.id],$bind($_,$_.button_down)));
+	gamepad.onButtonUp.add(($_=core_Core.CONTROLLERS.h[gamepad.id],$bind($_,$_.button_up)));
+	gamepad.onDisconnect.add(function() {
+		core_Core.CONTROLLERS.remove(gamepad.id);
+	});
+}
+var core_input_Stick = function(threshold) {
+	if(threshold == null) {
+		threshold = 0.0;
+	}
+	this.movement = new lime_math_Vector2();
+	this.input_state = new core_input_InputState();
+	this.threshold = threshold;
+};
+$hxClasses["core.input.Stick"] = core_input_Stick;
+core_input_Stick.__name__ = true;
+core_input_Stick.prototype = {
+	__class__: core_input_Stick
+};
+var core_input_Trigger = function(threshold) {
+	if(threshold == null) {
+		threshold = 0.0;
+	}
+	this.value = 0.0;
+	this.input_state = new core_input_InputState();
+	this.threshold = threshold;
+};
+$hxClasses["core.input.Trigger"] = core_input_Trigger;
+core_input_Trigger.__name__ = true;
+core_input_Trigger.prototype = {
+	__class__: core_input_Trigger
 };
 var core_mathematics_Signum = function() { };
 $hxClasses["core.mathematics.Signum"] = core_mathematics_Signum;
@@ -12795,6 +13045,9 @@ lime_math_Vector2.prototype = {
 	,__toFlashPoint: function() {
 		return null;
 	}
+	,get_lengthSquared: function() {
+		return this.x * this.x + this.y * this.y;
+	}
 	,__class__: lime_math_Vector2
 };
 var lime_math_Vector4 = function(x,y,z,w) {
@@ -13783,7 +14036,7 @@ var lime_utils_AssetCache = function() {
 	this.audio = new haxe_ds_StringMap();
 	this.font = new haxe_ds_StringMap();
 	this.image = new haxe_ds_StringMap();
-	this.version = 308003;
+	this.version = 531331;
 };
 $hxClasses["lime.utils.AssetCache"] = lime_utils_AssetCache;
 lime_utils_AssetCache.__name__ = true;
@@ -44708,6 +44961,7 @@ openfl_display_DisplayObject.__tempStack = new lime_utils_ObjectPool(function() 
 });
 core_Core.KEYBOARD = new core_input_Keyboard();
 core_Core.MOUSE = new core_input_Mouse();
+core_Core.CONTROLLERS = new haxe_ds_IntMap();
 core_Core.UNIVERSES = [];
 haxe_Unserializer.DEFAULT_RESOLVER = new haxe__$Unserializer_DefaultResolver();
 haxe_Unserializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";
